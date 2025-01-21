@@ -2,10 +2,11 @@ import {readFile, writeFile} from 'node:fs/promises'
 import {getDate, monSecret} from "./divers.js";
 import {NotFoundError} from "./errors.js";
 import {createHash} from 'node:crypto'
+import {v4 as uuidv4} from "uuid";
 
 
 /* Chemin de stockage des blocks */
-const path = ''
+const path = 'data/'
 
 /**
  * Mes définitions
@@ -23,16 +24,19 @@ const path = ''
  * @return {Promise<any>}
  */
 export async function findBlocks() {
-    // A coder
+    const data = await readFile(path + "blockchain.json", "utf-8");
+    return JSON.parse(data);
 }
 
 /**
  * Trouve un block à partir de son id
- * @param partialBlock
+ * @param idBlock
  * @return {Promise<Block[]>}
  */
-export async function findBlock(partialBlock) {
-    // A coder
+export async function findBlock(idBlock) {
+    const blocks = await findBlocks();
+
+    return blocks.filter(block => block.id === idBlock);
 }
 
 /**
@@ -40,7 +44,8 @@ export async function findBlock(partialBlock) {
  * @return {Promise<Block|null>}
  */
 export async function findLastBlock() {
-    // A coder
+    const blocks = await findBlocks();
+    return blocks.length > 0 ? blocks[blocks.length - 1] : null;
 }
 
 /**
@@ -49,6 +54,33 @@ export async function findLastBlock() {
  * @return {Promise<Block[]>}
  */
 export async function createBlock(contenu) {
-    // A coder
+    const blocs = await findBlocks()
+    const dernierBloc = await findLastBlock();
+
+    const hash = createHash("sha256");
+
+    const nouveauBloc = {
+        id: uuidv4(),
+        timestamp: getDate(),
+        nom: contenu.nom || "MysterieuxInconnu",
+        don: contenu.don || 0,
+        hash: ""
+    };
+
+    if (dernierBloc) {
+        const strDernierBloc = JSON.stringify(dernierBloc);
+        nouveauBloc.hash = hash.update(strDernierBloc).digest("hex");
+    } else {
+        // Premier bloc de la blockchain
+        nouveauBloc.hash = hash.update("genesis").digest("hex");
+    }
+
+    let nouveauxBlocs = [
+        ...blocs,
+        nouveauBloc
+    ];
+
+    return writeFile(path + "blockchain.json", JSON.stringify(nouveauxBlocs, null, 2), "utf-8")
+        .then(() => nouveauBloc);
 }
 
